@@ -45,17 +45,19 @@ main = xmonad
 myLayout =
   let
     tiled = ResizableTall 1 (1 / 20) (103 / 200) []
+    decor = simpleDeco shrinkText (theme wfarrTheme)
   in
     avoidStruts
-  . spacingRaw True (Border 0 0 0 0) False (Border 0 6 8 0) True
+  . spacingRaw True (Border 0 0 0 0) False (Border 0 4 8 0) True
   . ifMax 1 Simplest
-  $ simpleDeco shrinkText (theme wfarrTheme) tiled ||| Full ||| Mirror tiled
+  $ decor tiled ||| Full ||| decor (Mirror tiled)
 
 
 myKeys conf@XConfig { XMonad.modMask = modm } =
   M.fromList
     $  [ ((modm, xK_n)                  , spawn $ XMonad.terminal conf)
-       , ((modm, xK_o)                  , withWindowSet dwmZero) , ((modm, xK_p)                  , spawn "dmenu_run")
+       , ((modm, xK_o)                  , withWindowSet dwmZero)
+       , ((modm, xK_p)                  , spawn "dmenu_run")
        , ((modm, xK_c)                  , spawn "clipmenu")
        , ((modm, xK_u)                  , spawn "chromium")
        , ((modm .|. shiftMask, xK_c)    , kill)
