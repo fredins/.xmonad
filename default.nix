@@ -7,11 +7,16 @@ let
   f = { mkDerivation, base, containers, lib, xmonad, xmonad-contrib
       }:
       mkDerivation {
-        pname = "xmonad-lib";
+        pname = "xmonad-config";
         version = "0.1.0.0";
         src = ./.;
-        libraryHaskellDepends = [ base containers xmonad xmonad-contrib ];
-        license = lib.licenses.mit;
+        isLibrary = false;
+        isExecutable = true;
+        executableHaskellDepends = [
+          base containers xmonad xmonad-contrib
+        ];
+        license = "unknown";
+        mainProgram = "xmonad";
       };
 
   haskellPackages = if compiler == "default"

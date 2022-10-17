@@ -9,7 +9,7 @@ executable xmonad
     other-modules:    IfMaxAlt
     build-depends:    base ^>=4.15.1.0
                     , xmonad
-                    ,	xmonad-contrib ^>= 0.17
+                    ,	xmonad-contrib ^>= 0.17.1
                     , containers
     hs-source-dirs:   . 
                     , lib
