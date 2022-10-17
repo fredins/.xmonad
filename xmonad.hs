@@ -1,25 +1,45 @@
-import qualified Data.Map                        as M
-import           Data.Maybe                      (fromJust)
+{-# LANGUAGE NamedFieldPuns #-}
+import           Control.Monad                    (when)
+import           Data.Foldable                    (traverse_)
+import qualified Data.Map                         as M
+import           Data.Maybe                       (fromJust)
+import           Data.Monoid                      (All (All))
 import           IfMaxAlt
 import           Prelude
 import           XMonad
-import           XMonad.Actions.CopyWindow       (copyToAll, killAllOtherCopies)
+import           XMonad.Actions.CopyWindow        (copyToAll,
+                                                   killAllOtherCopies)
 import           XMonad.Actions.CycleWS
+import           XMonad.Actions.Minimize          (maximizeWindow,
+                                                   maximizeWindowAndFocus,
+                                                   minimizeWindow,
+                                                   withLastMinimized)
 import           XMonad.Config.Desktop
 import           XMonad.Hooks.EwmhDesktops
-import           XMonad.Hooks.InsertPosition     (Focus (Newer), Position (End),
-                                                  insertPosition)
-import           XMonad.Hooks.ManageDocks        (ToggleStruts (ToggleStruts),
-                                                  avoidStruts, docks)
+import           XMonad.Hooks.InsertPosition      (Focus (Newer),
+                                                   Position (End),
+                                                   insertPosition)
+import           XMonad.Hooks.ManageDocks         (ToggleStruts (ToggleStruts),
+                                                   avoidStruts, docks)
+import           XMonad.Hooks.Minimize            (minimizeEventHook)
+import           XMonad.Hooks.Place
 import           XMonad.Hooks.SetWMName
+import           XMonad.Layout.BoringWindows      (BoringWindows, boringWindows,
+                                                   focusDown, focusMaster,
+                                                   focusUp)
+import           XMonad.Layout.ButtonDecoration
+import           XMonad.Layout.DecorationAddons
 import           XMonad.Layout.DecorationMadness
-import           XMonad.Layout.ResizableTile     (MirrorResize (..),
-                                                  ResizableTall (..))
+import           XMonad.Layout.Maximize
+import           XMonad.Layout.Minimize           (minimize)
+import           XMonad.Layout.NoFrillsDecoration (noFrillsDeco)
+import           XMonad.Layout.ResizableTile      (MirrorResize (..),
+                                                   ResizableTall (..))
 import           XMonad.Layout.SimpleDecoration
-import           XMonad.Layout.Simplest          (Simplest (Simplest))
+import           XMonad.Layout.Simplest           (Simplest (Simplest))
 import           XMonad.Layout.Spacing
-import qualified XMonad.StackSet                 as W
-import           XMonad.StackSet                 (integrate', peek, stack)
+import qualified XMonad.StackSet                  as W
+import           XMonad.StackSet                  (integrate', peek, stack)
 import           XMonad.Util.Cursor
 import           XMonad.Util.Themes
 
@@ -36,22 +56,45 @@ main = xmonad
      , normalBorderColor  = "#2E3440"
      , focusedBorderColor = "#5E81AC"
      , borderWidth        = 0
-     , layoutHook         = myLayout
-     , manageHook         = myManageHook
+     , layoutHook         = layoutHook'
+     , manageHook         = manageHook'
+     , handleEventHook    = handleEventHook'
      , focusFollowsMouse  = False
      }
 
-
-myLayout =
+layoutHook' =
   let
     tiled = ResizableTall 1 (1 / 20) (103 / 200) []
-    decor = simpleDeco shrinkText (theme wfarrTheme)
+    decor = buttonDeco shrinkText defaultThemeWithButtons
+    -- decor = simpleDeco shrinkText (theme wfarrTheme)
   in
     avoidStruts
-  . spacingRaw True (Border 0 0 0 0) False (Border 0 4 8 0) True
+  . maximizeWithPadding 0
+  . minimize
+  . boringWindows
+--  . spacingRaw True (Border 0 0 0 0) False (Border 0 0 8 0) True
   . ifMax 1 Simplest
   $ decor tiled ||| Full ||| decor (Mirror tiled)
 
+handleEventHook' :: Event -> X All
+handleEventHook' = composeAll
+  [ minimizeEventHook
+  , showDesktopEventHook
+  ]
+
+
+manageHook' :: ManageHook
+manageHook' = composeAll
+  [ placeHook $ smart (0.5, 0.5)
+  , className =? "Animator" --> doFloat
+  , insertPosition End Newer
+  ]
+
+showDesktopEventHook :: Event -> X All
+showDesktopEventHook ClientMessageEvent{ev_message_type} = do
+  x <- getAtom "_NET_SHOWING_DESKTOP"
+  when (x == ev_message_type) showDesktop
+  return (All True)
 
 myKeys conf@XConfig { XMonad.modMask = modm } =
   M.fromList
@@ -64,9 +107,14 @@ myKeys conf@XConfig { XMonad.modMask = modm } =
        , ((modm, xK_space)              , sendMessage NextLayout)
        , ((modm .|. shiftMask, xK_space), setLayout $ XMonad.layoutHook conf)
        , ((modm .|. shiftMask, xK_n)    , refresh)
-       , ((modm, xK_j)                  , windows W.focusDown)
-       , ((modm, xK_k)                  , windows W.focusUp)
-       , ((modm, xK_BackSpace)          , windows W.focusMaster)
+       , ((modm, xK_j)                  , focusDown)
+       , ((modm, xK_k)                  , focusUp)
+       , ((modm, xK_BackSpace)          , focusMaster)
+       , ((modm, xK_m)                  , withFocused minimizeWindow)
+       , ((modm .|. shiftMask, xK_m)    , withLastMinimized maximizeWindowAndFocus)
+       , ((modm, xK_f)                  , withFocused (sendMessage . maximizeRestore))
+       , ((modm, xK_s)                  , showDesktop)
+       , ((modm .|. shiftMask, xK_s)    , showWindows)
        , ((modm, xK_Return)             , windows W.swapMaster)
        , ((modm .|. shiftMask, xK_j)    , windows W.swapDown)
        , ((modm .|. shiftMask, xK_k)    , windows W.swapUp)
@@ -78,7 +126,6 @@ myKeys conf@XConfig { XMonad.modMask = modm } =
        , ((modm, xK_d)                  , sendMessage (IncMasterN 1))
        , ((modm, xK_i)                  , sendMessage (IncMasterN (-1)))
        , ((modm, xK_b)                  , sendMessage ToggleStruts)
-       , ((modm, xK_f)                  , sendMessage $ JumpToLayout "Full")
        , ((modm, xK_q)                  , spawn "xmonad --restart")
        , ((modm, xK_r)                  , spawn "xmonad --recompile && xmonad --restart")
        , ((modm .|. shiftMask, xK_o)    , restart "/home/fm/.local/bin/obtoxmd" True)
@@ -90,6 +137,20 @@ myKeys conf@XConfig { XMonad.modMask = modm } =
        | (i, k) <- zip (XMonad.workspaces conf) [xK_1 .. xK_9]
        , (f, m) <- [(lazyView, 0), (W.shift, shiftMask)]]
 
+
+showWindows :: X ()
+showWindows = traverseWindows maximizeWindow
+
+showDesktop :: X ()
+showDesktop = traverseWindows minimizeWindow
+
+traverseWindows :: (Window -> X a) -> X ()
+traverseWindows f = withWindowSet
+                  $ traverse_ f
+                  . concatMap (integrate' . stack)
+                  . W.workspaces
+
+
 dwmZero :: WindowSet -> X ()
 dwmZero w = toggle $ filter (== (fromJust . peek) w) ws
  where
@@ -98,12 +159,6 @@ dwmZero w = toggle $ filter (== (fromJust . peek) w) ws
 
   ws = concatMap (integrate' . stack) $ W.workspaces w
 
-
-myManageHook = composeAll
-  [ className =? "Animator" --> doFloat
-  , insertPosition End Newer
-  ]
-  where wmName = stringProperty "WM_NAME"
 
 isVisible w ws = any ((w ==) .  W.tag . W.workspace) (W.visible ws)
 lazyView w ws | isVisible w ws = ws
