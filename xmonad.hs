@@ -176,12 +176,21 @@ traverseWindows f = withWindowSet
                   . W.allWindows
 
 dwmZero :: WindowSet -> X ()
+dwmZero w = toggle $ filter (== fromJust (peek w)) $ W.allWindows w
+ where
+  toggle xs | length xs > 1 = killAllOtherCopies
+            | otherwise     = windows copyToAll
+
+
+{-
+dwmZero :: WindowSet -> X ()
 dwmZero w = toggle $ filter (== (fromJust . peek) w) ws
  where
   toggle xs | length xs > 1 = killAllOtherCopies
             | otherwise     = windows copyToAll
 
   ws = concatMap (integrate' . stack) $ W.workspaces w
+-}
 
 
 isVisible w ws = any ((w ==) .  W.tag . W.workspace) (W.visible ws)
