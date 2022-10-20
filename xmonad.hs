@@ -176,7 +176,7 @@ traverseWindows f = withWindowSet
                   . W.allWindows
 
 dwmZero :: WindowSet -> X ()
-dwmZero w = toggle $ filter (== fromJust (peek w)) $ W.allWindows w
+dwmZero s = toggle $ filter (== fromJust (peek s)) (W.allWindows s :: [Window])
  where
   toggle xs | length xs > 1 = killAllOtherCopies
             | otherwise     = windows copyToAll
