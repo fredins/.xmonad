@@ -129,7 +129,7 @@ myKeys conf@XConfig { XMonad.modMask = modm } =
        , ((modm, xK_o)                  , withWindowSet dwmZero)
        , ((modm, xK_p)                  , spawn "dmenu_run")
        , ((modm, xK_c)                  , spawn "clipmenu")
-       , ((modm, xK_u)                  , spawn "chromium")
+       , ((modm, xK_u)                  , spawn "firefox")
        , ((modm .|. shiftMask, xK_c)    , kill)
        , ((modm, xK_space)              , sendMessage NextLayout)
        , ((modm .|. shiftMask, xK_space), setLayout $ XMonad.layoutHook conf)
