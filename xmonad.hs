@@ -17,6 +17,7 @@ import           XMonad.Actions.Minimize             (maximizeWindow,
                                                       minimizeWindow,
                                                       withLastMinimized)
 import           XMonad.Config.Desktop
+import           XMonad.Hooks.DynamicProperty        (dynamicPropertyChange)
 import           XMonad.Hooks.EwmhDesktops
 import           XMonad.Hooks.InsertPosition         (Focus (Newer),
                                                       Position (End),
@@ -81,12 +82,16 @@ handleEventHook' :: Event -> X All
 handleEventHook' = composeAll
   [ minimizeEventHook
   , showDesktopEventHook
+  , dynamicPropertyChange "WM_CLASS" (className =? "Spotify" --> doShift "9")
   ]
 
 manageHook' :: ManageHook
 manageHook' = composeAll
   [ placeHook $ smart (0.5, 0.5)
-  , className =? "Floating" --> doFloat
+  , className =? "discord" --> doShift "9"
+  , className =? "Thunderbird" --> doShift "8"
+  , className =? "qBittorrent" --> doShift "7"
+  , className =? "Firefox" <&&> resource =? "Dialog" --> doFloat
   , insertPosition End Newer
   ]
 
