@@ -16,6 +16,10 @@ import           XMonad.Actions.Minimize             (maximizeWindow,
                                                       maximizeWindowAndFocus,
                                                       minimizeWindow,
                                                       withLastMinimized)
+import           XMonad.Actions.WindowBringer        (WindowBringerConfig (windowTitler),
+                                                      bringMenu,
+                                                      bringMenuConfig, gotoMenu,
+                                                      gotoMenuConfig)
 import           XMonad.Config.Desktop
 import           XMonad.Hooks.DynamicProperty        (dynamicPropertyChange)
 import           XMonad.Hooks.EwmhDesktops
@@ -40,6 +44,7 @@ import           XMonad.Layout.Simplest              (Simplest (Simplest))
 import qualified XMonad.StackSet                     as W
 import           XMonad.StackSet                     (integrate', peek, stack)
 import           XMonad.Util.Cursor
+import           XMonad.Util.NamedWindows            (getNameWMClass)
 import           XMonad.Util.Themes
 import           XMonad.Util.WorkspaceCompare        (WorkspaceSort,
                                                       filterOutWs)
@@ -163,11 +168,19 @@ myKeys conf@XConfig { XMonad.modMask = modm } =
        , ((modm .|. shiftMask, xK_o)    , restart "/home/fm/.local/bin/obtoxmd" True)
        , ((modm, xK_Tab)                , toggleWS)
        , ((modm .|. shiftMask, xK_q)    , spawn "lxqt-leave")
+       , ((modm, xK_g     )             , gotoMenuConfig winBringer)
+       , ((modm .|. shiftMask, xK_g)    , bringMenuConfig winBringer)
        ]
 
     ++ [((m .|. modm, k), windows $ f i)
        | (i, k) <- zip (XMonad.workspaces conf) [xK_1 .. xK_9]
        , (f, m) <- [(lazyView, 0), (W.shift, shiftMask)]]
+
+winBringer :: WindowBringerConfig
+winBringer = def { windowTitler = const winClassName}
+
+winClassName :: Window -> X String
+winClassName = fmap show . getNameWMClass
 
 showWindows :: X ()
 showWindows = traverseWindows maximizeWindow
