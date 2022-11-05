@@ -44,7 +44,6 @@ import           XMonad.Layout.Simplest              (Simplest (Simplest))
 import qualified XMonad.StackSet                     as W
 import           XMonad.StackSet                     (integrate', peek, stack)
 import           XMonad.Util.Cursor
-import           XMonad.Util.NamedWindows            (getNameWMClass)
 import           XMonad.Util.Themes
 import           XMonad.Util.WorkspaceCompare        (WorkspaceSort,
                                                       filterOutWs)
@@ -180,7 +179,7 @@ winBringer :: WindowBringerConfig
 winBringer = def { windowTitler = const winClassName}
 
 winClassName :: Window -> X String
-winClassName = fmap show . getNameWMClass
+winClassName = fmap show . runQuery className
 
 showWindows :: X ()
 showWindows = traverseWindows maximizeWindow
