@@ -17,8 +17,7 @@ import           XMonad.Actions.Minimize             (maximizeWindow,
                                                       minimizeWindow,
                                                       withLastMinimized)
 import           XMonad.Actions.WindowBringer        (WindowBringerConfig (windowTitler),
-                                                      bringMenu,
-                                                      bringMenuConfig, gotoMenu,
+                                                      bringMenuConfig,
                                                       gotoMenuConfig)
 import           XMonad.Config.Desktop
 import           XMonad.Hooks.DynamicProperty        (dynamicPropertyChange)
@@ -42,7 +41,7 @@ import           XMonad.Layout.SideBorderDecoration
 import           XMonad.Layout.SimpleDecoration
 import           XMonad.Layout.Simplest              (Simplest (Simplest))
 import qualified XMonad.StackSet                     as W
-import           XMonad.StackSet                     (integrate', peek, stack)
+import           XMonad.StackSet                     (peek)
 import           XMonad.Util.Cursor
 import           XMonad.Util.Themes
 import           XMonad.Util.WorkspaceCompare        (WorkspaceSort,
@@ -179,7 +178,7 @@ winBringer :: WindowBringerConfig
 winBringer = def { windowTitler = const winClassName}
 
 winClassName :: Window -> X String
-winClassName = fmap show . runQuery className
+winClassName = runQuery className
 
 showWindows :: X ()
 showWindows = traverseWindows maximizeWindow
