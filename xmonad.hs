@@ -8,6 +8,7 @@ import           Data.Maybe                          (fromJust, isNothing)
 import           Data.Monoid                         (All (All))
 import           IfMaxAlt
 import           Prelude
+import           SideBorderDecoration
 import           XMonad
 import           XMonad.Actions.CopyWindow           (copyToAll,
                                                       killAllOtherCopies)
@@ -32,12 +33,12 @@ import           XMonad.Hooks.Place
 import           XMonad.Hooks.SetWMName
 import           XMonad.Layout.BoringWindows         (boringWindows, focusDown,
                                                       focusMaster, focusUp)
-import           XMonad.Layout.ImageButtonDecoration (defaultThemeWithImageButtons)
+import           XMonad.Layout.ImageButtonDecoration (defaultThemeWithImageButtons,
+                                                      imageButtonDeco)
 import           XMonad.Layout.Maximize
 import           XMonad.Layout.Minimize              (minimize)
 import           XMonad.Layout.ResizableTile         (MirrorResize (..),
                                                       ResizableTall (..))
-import           XMonad.Layout.SideBorderDecoration
 import           XMonad.Layout.SimpleDecoration
 import           XMonad.Layout.Simplest              (Simplest (Simplest))
 import qualified XMonad.StackSet                     as W
@@ -54,12 +55,10 @@ main = xmonad
      $ conf
 
 conf = desktopConfig
-     { terminal           = "alacritty"
+     { terminal           = "qterminal"
      , modMask            = mod4Mask
      , startupHook        = setWMName "LG3D" >> setDefaultCursor xC_left_ptr
      , keys               = myKeys
-     , normalBorderColor  = "#2E3440"
-     , focusedBorderColor = "#5E81AC"
      , borderWidth        = 0
      , layoutHook         = layoutHook'
      , manageHook         = manageHook'
@@ -70,8 +69,8 @@ conf = desktopConfig
 layoutHook' =
   let
     tiled = ResizableTall 1 (1 / 20) (103 / 200) []
-    decor (x :: l Window) = sideBorderLayout (sideBorderConf conf) x
-    -- decor = imageButtonDeco clearlooks
+    decor (x :: l Window) = sideBorderLayout' blueBorder U x
+  --  decor = imageButtonDeco shrinkText clearlooks
   in
     avoidStruts
   . maximizeWithPadding 0
@@ -92,7 +91,7 @@ manageHook' :: ManageHook
 manageHook' = composeAll
   [ placeHook $ smart (0.5, 0.5)
   , className =? "discord" --> doShift "9"
-  , className =? "Thunderbird" --> doShift "8"
+  , className =? "thunderbird" --> doShift "8"
   , className =? "qBittorrent" --> doShift "7"
   , className =? "Firefox" <&&> resource =? "Dialog" --> doFloat
   , insertPosition End Newer
@@ -118,26 +117,37 @@ showDesktopEventHook = \case
   _ ->
     pure $ All True
 
-sideBorderConf :: XConfig a -> SideBorderConfig
-sideBorderConf conf = def
-  { sbSide = U
-  , sbActiveColor = XMonad.focusedBorderColor conf
-  , sbInactiveColor = XMonad.normalBorderColor conf
-  , sbSize = 7
-  }
-
 clearlooks :: Theme
 clearlooks = (theme wfarrTheme)
-  { windowTitleIcons = windowTitleIcons defaultThemeWithImageButtons }
+  { windowTitleIcons    = windowTitleIcons defaultThemeWithImageButtons }
+
+clearlooks' :: Theme
+clearlooks' = (theme wfarrTheme)
+  { activeBorderColor   = "#5E81AC"
+  , activeColor         = "#5E81AC"
+  , inactiveBorderColor = "#1E3440"
+  , inactiveColor       = "#1E3440"
+  , activeBorderWidth   = 20
+  , windowTitleIcons    = windowTitleIcons defaultThemeWithImageButtons
+  }
+
+blueBorder :: Theme
+blueBorder = def
+  { activeBorderColor   = "#5E81AC"
+  , activeColor         = "#5E81AC"
+  , inactiveBorderColor = "#1E3440"
+  , inactiveColor       = "#1E3440"
+  , activeBorderWidth   = 7
+  }
 
 myKeys conf@XConfig { XMonad.modMask = modm } =
   M.fromList
     $  [ ((modm, xK_n)                  , spawn $ XMonad.terminal conf)
-       , ((modm .|. shiftMask, xK_n)    , spawn $ XMonad.terminal conf <> " --working-directory $(xcwd)")
+       , ((modm .|. shiftMask, xK_n)    , spawn $ XMonad.terminal conf <> " -w $(xcwd)")
        , ((modm, xK_o)                  , withWindowSet dwmZero)
        , ((modm, xK_p)                  , spawn "dmenu_run")
        , ((modm, xK_c)                  , spawn "clipmenu")
-       , ((modm, xK_u)                  , spawn "firefox")
+       , ((modm, xK_u)                  , spawn "firefox-bin")
        , ((modm .|. shiftMask, xK_c)    , kill)
        , ((modm, xK_space)              , sendMessage NextLayout)
        , ((modm .|. shiftMask, xK_space), setLayout $ XMonad.layoutHook conf)
