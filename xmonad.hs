@@ -29,11 +29,9 @@ import           XMonad.Hooks.InsertPosition         (Focus (Newer),
                                                       insertPosition)
 import           XMonad.Hooks.ManageDocks            (ToggleStruts (ToggleStruts),
                                                       avoidStruts, docks)
-import           XMonad.Hooks.ManageHelpers          (composeOne, doCenterFloat,
-                                                      isDialog, (-?>))
+import           XMonad.Hooks.ManageHelpers          (doCenterFloat, isDialog)
 import           XMonad.Hooks.Minimize               (minimizeEventHook)
 import           XMonad.Hooks.Place
-import           XMonad.Hooks.RefocusLast            (isFloat)
 import           XMonad.Hooks.SetWMName
 import           XMonad.Layout.BoringWindows         (boringWindows, focusDown,
                                                       focusMaster, focusUp)
@@ -99,23 +97,20 @@ handleEventHook' = composeAll
 
 -- Ordering is important
 manageHook' :: ManageHook
-manageHook' =
-  let
-    doAll = composeAll
-      [ manageSpawn
-      , placeHook $ smart (0.5, 0.5)
-      , className =? "thunderbird" --> doShift "8"
-      , className =? "qBittorrent" --> doShift "7"
-      , className =? "discord" --> doShift "9"
-      , isDialog --> doFloat
-      ]
-    doFirst = composeOne
-     [
-       isDialog -?> insertPosition Master Newer
-     , not <$> isFloat -?> insertPosition End Newer
-     ]
-  in
-  doAll <> doFirst
+manageHook' = composeAll
+  [ manageSpawn
+  , placeHook $ smart (0.5, 0.5)
+  , className =? "thunderbird" --> doShift "8"
+  , className =? "qBittorrent" --> doShift "7"
+  , className =? "discord" --> doShift "9"
+  , isDialog --> doFloat
+  , smartInsert
+  ]
+
+smartInsert :: ManageHook
+smartInsert = willFloat >>= \float ->
+  insertPosition (if float then Master else End) Newer
+
 
 filterEmpty :: WindowSet -> WorkspaceSort
 filterEmpty ss =
