@@ -17,6 +17,7 @@ import           XMonad.Actions.Minimize             (maximizeWindow,
                                                       maximizeWindowAndFocus,
                                                       minimizeWindow,
                                                       withLastMinimized)
+import           XMonad.Actions.SpawnOn              (manageSpawn, spawnAndDo)
 import           XMonad.Actions.WindowBringer        (WindowBringerConfig (windowTitler),
                                                       bringMenuConfig,
                                                       gotoMenuConfig)
@@ -24,17 +25,22 @@ import           XMonad.Config.Desktop
 import           XMonad.Hooks.DynamicProperty        (dynamicPropertyChange)
 import           XMonad.Hooks.EwmhDesktops
 import           XMonad.Hooks.InsertPosition         (Focus (Newer),
-                                                      Position (End),
+                                                      Position (End, Master),
                                                       insertPosition)
 import           XMonad.Hooks.ManageDocks            (ToggleStruts (ToggleStruts),
                                                       avoidStruts, docks)
+import           XMonad.Hooks.ManageHelpers          (composeOne, doCenterFloat,
+                                                      isDialog, (-?>))
 import           XMonad.Hooks.Minimize               (minimizeEventHook)
 import           XMonad.Hooks.Place
+import           XMonad.Hooks.RefocusLast            (isFloat)
 import           XMonad.Hooks.SetWMName
 import           XMonad.Layout.BoringWindows         (boringWindows, focusDown,
                                                       focusMaster, focusUp)
 import           XMonad.Layout.ImageButtonDecoration (defaultThemeWithImageButtons,
                                                       imageButtonDeco)
+import           XMonad.Layout.LayoutHints           (hintsEventHook,
+                                                      layoutHintsToCenter)
 import           XMonad.Layout.Maximize
 import           XMonad.Layout.Minimize              (minimize)
 import           XMonad.Layout.ResizableTile         (MirrorResize (..),
@@ -44,20 +50,22 @@ import           XMonad.Layout.Simplest              (Simplest (Simplest))
 import qualified XMonad.StackSet                     as W
 import           XMonad.StackSet                     (peek)
 import           XMonad.Util.Cursor
+import           XMonad.Util.Run                     (runProcessWithInput)
 import           XMonad.Util.Themes
 import           XMonad.Util.WorkspaceCompare        (WorkspaceSort,
                                                       filterOutWs)
+
 main = xmonad
-     . ewmhFullscreen
      . addEwmhWorkspaceSort (filterEmpty <$> gets windowset)
      . ewmh
+     . ewmhFullscreen
      . docks
      $ conf
 
 conf = desktopConfig
      { terminal           = "qterminal"
      , modMask            = mod4Mask
-     , startupHook        = setWMName "LG3D" >> setDefaultCursor xC_left_ptr
+     , startupHook        = setWMName "LG3D" <> setDefaultCursor xC_left_ptr
      , keys               = myKeys
      , borderWidth        = 0
      , layoutHook         = layoutHook'
@@ -76,6 +84,7 @@ layoutHook' =
   . maximizeWithPadding 0
   . minimize
   . boringWindows
+  . layoutHintsToCenter
   . ifMax 1 Simplest
   . decor
   $ tiled ||| Full ||| Mirror tiled
@@ -83,19 +92,30 @@ layoutHook' =
 handleEventHook' :: Event -> X All
 handleEventHook' = composeAll
   [ minimizeEventHook
+  , hintsEventHook
   , showDesktopEventHook
   , dynamicPropertyChange "WM_CLASS" (className =? "Spotify" --> doShift "9")
   ]
 
+-- Ordering is important
 manageHook' :: ManageHook
-manageHook' = composeAll
-  [ placeHook $ smart (0.5, 0.5)
-  , className =? "discord" --> doShift "9"
-  , className =? "thunderbird" --> doShift "8"
-  , className =? "qBittorrent" --> doShift "7"
-  , className =? "Firefox" <&&> resource =? "Dialog" --> doFloat
-  , insertPosition End Newer
-  ]
+manageHook' =
+  let
+    doAll = composeAll
+      [ manageSpawn
+      , placeHook $ smart (0.5, 0.5)
+      , className =? "thunderbird" --> doShift "8"
+      , className =? "qBittorrent" --> doShift "7"
+      , className =? "discord" --> doShift "9"
+      , isDialog --> doFloat
+      ]
+    doFirst = composeOne
+     [
+       isDialog -?> insertPosition Master Newer
+     , not <$> isFloat -?> insertPosition End Newer
+     ]
+  in
+  doAll <> doFirst
 
 filterEmpty :: WindowSet -> WorkspaceSort
 filterEmpty ss =
@@ -146,6 +166,7 @@ myKeys conf@XConfig { XMonad.modMask = modm } =
        , ((modm .|. shiftMask, xK_n)    , spawn $ XMonad.terminal conf <> " -w $(xcwd)")
        , ((modm, xK_o)                  , withWindowSet dwmZero)
        , ((modm, xK_p)                  , spawn "dmenu_run")
+       , ((modm .|. shiftMask, xK_p)    , dmenuFloat )
        , ((modm, xK_c)                  , spawn "clipmenu")
        , ((modm, xK_u)                  , spawn "firefox-bin")
        , ((modm .|. shiftMask, xK_c)    , kill)
@@ -183,6 +204,15 @@ myKeys conf@XConfig { XMonad.modMask = modm } =
     ++ [((m .|. modm, k), windows $ f i)
        | (i, k) <- zip (XMonad.workspaces conf) [xK_1 .. xK_9]
        , (f, m) <- [(lazyView, 0), (W.shift, shiftMask)]]
+
+dmenuFloat :: X ()
+dmenuFloat = spawnFloat
+  =<< runProcessWithInput "dmenu" []
+  =<< runProcessWithInput "dmenu_path" [] []
+
+spawnFloat :: String -> X ()
+spawnFloat = spawnAndDo (insertPosition Master Newer <> doCenterFloat)
+
 
 winBringer :: WindowBringerConfig
 winBringer = def { windowTitler = const winClassName}
