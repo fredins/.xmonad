@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE NamedFieldPuns      #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-import           Control.Monad                       (when)
+import           Control.Monad                       (void, when)
 import           Data.Foldable                       (traverse_)
 import           Data.Map                            (member)
 import qualified Data.Map                            as M
@@ -95,7 +95,7 @@ handleEventHook' = composeAll
   , hintsEventHook
   , showDesktopEventHook
   , dynamicPropertyChange "WM_CLASS" (className =? "Spotify" --> doShift "9")
-  , focusHook
+  , focusEventHook
   , swallowEventHook (className =? "qterminal") (not <$> isDialog)
   ]
 
@@ -148,8 +148,13 @@ filterEmpty ss =
   . filter isEmpty
   $ W.workspaces ss
 
-focusHook :: Event -> X All
-focusHook = \case
+switchFocus :: X () -> X ()
+switchFocus swF = swF >> withFocused f
+  where
+    f w = isFloat w >>= flip when (windows $ raiseWin w)
+
+focusEventHook :: Event -> X All
+focusEventHook = \case
   ClientMessageEvent {ev_message_type, ev_window} -> do
     p <- (==ev_message_type) <$> getAtom "_NET_ACTIVE_WINDOW" <&&> isFloat ev_window
     let raiseFloat = windows $ raiseWin ev_window
@@ -193,50 +198,50 @@ blueBorder = def
   , activeBorderWidth   = 7
   }
 
-myKeys conf@XConfig { XMonad.modMask = modm } =
+myKeys conf@XConfig { XMonad.modMask = m } =
   M.fromList
-    $  [ ((modm, xK_n)                  , spawn $ XMonad.terminal conf)
-       , ((modm .|. shiftMask, xK_n)    , spawn $ XMonad.terminal conf <> " -w $(xcwd)")
-       , ((modm, xK_o)                  , withWindowSet dwmZero)
-       , ((modm, xK_p)                  , spawn "dmenu_run")
-       , ((modm .|. shiftMask, xK_p)    , dmenuFloat )
-       , ((modm, xK_c)                  , spawn "clipmenu")
-       , ((modm, xK_u)                  , spawn "firefox-bin")
-       , ((modm .|. shiftMask, xK_c)    , kill)
-       , ((modm, xK_space)              , sendMessage NextLayout)
-       , ((modm .|. shiftMask, xK_space), setLayout $ XMonad.layoutHook conf)
-       , ((modm .|. shiftMask, xK_r)    , refresh)
-       , ((modm, xK_j)                  , focusDown)
-       , ((modm, xK_k)                  , focusUp)
-       , ((modm, xK_BackSpace)          , focusMaster)
-       , ((modm, xK_m)                  , withFocused minimizeWindow)
-       , ((modm .|. shiftMask, xK_m)    , withLastMinimized maximizeWindowAndFocus)
-       , ((modm, xK_f)                  , withFocused (sendMessage . maximizeRestore))
-       , ((modm, xK_s)                  , showDesktop)
-       , ((modm .|. shiftMask, xK_s)    , showWindows)
-       , ((modm, xK_Return)             , windows W.swapMaster)
-       , ((modm .|. shiftMask, xK_j)    , windows W.swapDown)
-       , ((modm .|. shiftMask, xK_k)    , windows W.swapUp)
-       , ((modm, xK_h)                  , sendMessage Shrink)
-       , ((modm, xK_l)                  , sendMessage Expand)
-       , ((modm .|. shiftMask, xK_h)    , sendMessage MirrorExpand)
-       , ((modm .|. shiftMask, xK_l)    , sendMessage MirrorShrink)
-       , ((modm, xK_t)                  , withFocused $ windows . W.sink)
-       , ((modm, xK_d)                  , sendMessage (IncMasterN 1))
-       , ((modm, xK_i)                  , sendMessage (IncMasterN (-1)))
-       , ((modm, xK_b)                  , sendMessage ToggleStruts)
-       , ((modm, xK_q)                  , spawn "xmonad --restart")
-       , ((modm, xK_r)                  , spawn "xmonad --recompile && xmonad --restart")
-       , ((modm .|. shiftMask, xK_o)    , restart "/home/fm/.local/bin/obtoxmd" True)
-       , ((modm, xK_Tab)                , toggleWS)
-       , ((modm .|. shiftMask, xK_q)    , spawn "lxqt-leave")
-       , ((modm, xK_g     )             , gotoMenuConfig winBringer)
-       , ((modm .|. shiftMask, xK_g)    , bringMenuConfig winBringer)
+    $  [ ((m, xK_n)                  , spawn $ XMonad.terminal conf)
+       , ((m .|. shiftMask, xK_n)    , spawn $ XMonad.terminal conf <> " -w $(xcwd)")
+       , ((m, xK_o)                  , withWindowSet dwmZero)
+       , ((m, xK_p)                  , spawn "dmenu_run")
+       , ((m .|. shiftMask, xK_p)    , dmenuFloat )
+       , ((m, xK_c)                  , spawn "clipmenu")
+       , ((m, xK_u)                  , spawn "firefox-bin")
+       , ((m .|. shiftMask, xK_c)    , kill)
+       , ((m, xK_space)              , sendMessage NextLayout)
+       , ((m .|. shiftMask, xK_space), setLayout $ XMonad.layoutHook conf)
+       , ((m .|. shiftMask, xK_r)    , refresh)
+       , ((m, xK_j)                  , switchFocus focusDown)
+       , ((m, xK_k)                  , switchFocus focusUp)
+       , ((m, xK_BackSpace)          , switchFocus focusMaster)
+       , ((m, xK_m)                  , withFocused minimizeWindow)
+       , ((m .|. shiftMask, xK_m)    , withLastMinimized maximizeWindowAndFocus)
+       , ((m, xK_f)                  , withFocused (sendMessage . maximizeRestore))
+       , ((m, xK_s)                  , showDesktop)
+       , ((m .|. shiftMask, xK_s)    , showWindows)
+       , ((m, xK_Return)             , windows W.swapMaster)
+       , ((m .|. shiftMask, xK_j)    , windows W.swapDown)
+       , ((m .|. shiftMask, xK_k)    , windows W.swapUp)
+       , ((m, xK_h)                  , sendMessage Shrink)
+       , ((m, xK_l)                  , sendMessage Expand)
+       , ((m .|. shiftMask, xK_h)    , sendMessage MirrorExpand)
+       , ((m .|. shiftMask, xK_l)    , sendMessage MirrorShrink)
+       , ((m, xK_t)                  , withFocused $ windows . W.sink)
+       , ((m, xK_d)                  , sendMessage (IncMasterN 1))
+       , ((m, xK_i)                  , sendMessage (IncMasterN (-1)))
+       , ((m, xK_b)                  , sendMessage ToggleStruts)
+       , ((m, xK_q)                  , spawn "xmonad --restart")
+       , ((m, xK_r)                  , spawn "xmonad --recompile && xmonad --restart")
+       , ((m .|. shiftMask, xK_o)    , restart "/home/fm/.local/bin/obtoxmd" True)
+       , ((m, xK_Tab)                , toggleWS)
+       , ((m .|. shiftMask, xK_q)    , spawn "lxqt-leave")
+       , ((m, xK_g     )             , gotoMenuConfig winBringer)
+       , ((m .|. shiftMask, xK_g)    , bringMenuConfig winBringer)
        ]
 
-    ++ [((m .|. modm, k), windows $ f i)
-       | (i, k) <- zip (XMonad.workspaces conf) [xK_1 .. xK_9]
-       , (f, m) <- [(lazyView, 0), (W.shift, shiftMask)]]
+    ++ [((m .|. msk, k), windows $ f w)
+       | (w, k) <- zip (XMonad.workspaces conf) [xK_1 .. xK_9]
+       , (f, msk) <- [(lazyView, 0), (W.shift, shiftMask)]]
 
 dmenuFloat :: X ()
 dmenuFloat = spawnFloat
