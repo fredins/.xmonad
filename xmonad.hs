@@ -202,7 +202,7 @@ myKeys conf@XConfig { XMonad.modMask = m } =
   M.fromList
     $  [ ((m, xK_n)                  , spawn $ XMonad.terminal conf)
        , ((m .|. shiftMask, xK_n)    , spawn $ XMonad.terminal conf <> " -w $(xcwd)")
-       , ((m, xK_o)                  , withWindowSet dwmZero)
+       , ((m, xK_o)                  , mpv)
        , ((m, xK_p)                  , spawn "dmenu_run")
        , ((m .|. shiftMask, xK_p)    , dmenuFloat )
        , ((m, xK_c)                  , spawn "clipmenu")
@@ -232,7 +232,6 @@ myKeys conf@XConfig { XMonad.modMask = m } =
        , ((m, xK_b)                  , sendMessage ToggleStruts)
        , ((m, xK_q)                  , spawn "xmonad --restart")
        , ((m, xK_r)                  , spawn "xmonad --recompile && xmonad --restart")
-       , ((m .|. shiftMask, xK_o)    , restart "/home/fm/.local/bin/obtoxmd" True)
        , ((m, xK_Tab)                , toggleWS)
        , ((m .|. shiftMask, xK_q)    , spawn "lxqt-leave")
        , ((m, xK_g     )             , gotoMenuConfig winBringer)
@@ -242,6 +241,9 @@ myKeys conf@XConfig { XMonad.modMask = m } =
     ++ [((m .|. msk, k), windows $ f w)
        | (w, k) <- zip (XMonad.workspaces conf) [xK_1 .. xK_9]
        , (f, msk) <- [(lazyView, 0), (W.shift, shiftMask)]]
+
+mpv :: X ()
+mpv = spawn . (<>) "mpv " =<< runProcessWithInput "dmenu" [] []
 
 dmenuFloat :: X ()
 dmenuFloat = spawnFloat
