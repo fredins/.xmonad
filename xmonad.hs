@@ -3,6 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 import           Control.Monad                       (when)
 import           Data.Foldable                       (traverse_)
+import           Data.Map                            (member)
 import qualified Data.Map                            as M
 import           Data.Maybe                          (fromJust, isNothing)
 import           Data.Monoid                         (All (All))
@@ -33,6 +34,7 @@ import           XMonad.Hooks.ManageHelpers          (doCenterFloat, isDialog)
 import           XMonad.Hooks.Minimize               (minimizeEventHook)
 import           XMonad.Hooks.Place
 import           XMonad.Hooks.SetWMName
+import           XMonad.Hooks.WindowSwallowing       (swallowEventHook)
 import           XMonad.Layout.BoringWindows         (boringWindows, focusDown,
                                                       focusMaster, focusUp)
 import           XMonad.Layout.ImageButtonDecoration (defaultThemeWithImageButtons,
@@ -93,6 +95,8 @@ handleEventHook' = composeAll
   , hintsEventHook
   , showDesktopEventHook
   , dynamicPropertyChange "WM_CLASS" (className =? "Spotify" --> doShift "9")
+  , focusHook
+  , swallowEventHook (className =? "qterminal") (not <$> isDialog)
   ]
 
 -- Ordering is important
@@ -106,6 +110,27 @@ manageHook' = composeAll
   , isDialog --> doFloat
   , smartInsert
   ]
+
+isFocus :: Window -> X Bool
+isFocus w = withWindowSet $ \ws ->
+    case peek ws of
+      (Just w') -> pure (w' == w)
+      _         -> pure False
+
+
+raiseWin :: Window -> WindowSet -> WindowSet
+raiseWin w = W.modify' f
+  where
+    err = error "raiseWin: multiple windows matching Window (XID)"
+    f (W.Stack t ls rs)
+      | w == t      = W.Stack t [] (ls ++ rs)
+      | w `elem` ls =  case break (==w) ls of
+                         ([_], rest) -> W.Stack t (w:rest) rs
+                         _           -> err
+      | otherwise   =  case break (==w) rs of
+                         ([_], rest) -> W.Stack t (w:ls) rest
+                         _           -> err
+
 
 smartInsert :: ManageHook
 smartInsert = willFloat >>= \float ->
@@ -122,6 +147,19 @@ filterEmpty ss =
   . map W.tag
   . filter isEmpty
   $ W.workspaces ss
+
+focusHook :: Event -> X All
+focusHook = \case
+  ClientMessageEvent {ev_message_type, ev_window} -> do
+    p <- (==ev_message_type) <$> getAtom "_NET_ACTIVE_WINDOW" <&&> isFloat ev_window
+    let raiseFloat = windows $ raiseWin ev_window
+    when p raiseFloat
+    pure $ All True
+  _ ->
+    pure $ All True
+
+isFloat :: Window -> X Bool
+isFloat w = withWindowSet (pure . member w . W.floating)
 
 showDesktopEventHook :: Event -> X All
 showDesktopEventHook = \case
