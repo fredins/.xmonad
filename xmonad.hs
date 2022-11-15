@@ -87,7 +87,7 @@ layoutHook' =
   . layoutHintsToCenter
   . ifMax 1 Simplest
   . decor
-  $ tiled ||| Full ||| Mirror tiled
+  $ tiled ||| Full
 
 handleEventHook' :: Event -> X All
 handleEventHook' = composeAll
