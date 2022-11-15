@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE NamedFieldPuns      #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-import           Control.Monad                       (void, when)
+import           Control.Monad                       (when)
 import           Data.Foldable                       (traverse_)
 import           Data.Map                            (member)
 import qualified Data.Map                            as M
@@ -10,7 +10,7 @@ import           Data.Monoid                         (All (All))
 import           IfMaxAlt
 import           Prelude
 import           SideBorderDecoration
-import           XMonad
+import           XMonad                              hiding (none)
 import           XMonad.Actions.CopyWindow           (copyToAll,
                                                       killAllOtherCopies)
 import           XMonad.Actions.CycleWS
@@ -78,7 +78,7 @@ layoutHook' =
   let
     tiled = ResizableTall 1 (1 / 20) (103 / 200) []
     decor (x :: l Window) = sideBorderLayout' blueBorder U x
-  --  decor = imageButtonDeco shrinkText clearlooks
+    -- decor = imageButtonDeco shrinkText clearlooks
   in
     avoidStruts
   . maximizeWithPadding 0
@@ -111,25 +111,6 @@ manageHook' = composeAll
   , smartInsert
   ]
 
-isFocus :: Window -> X Bool
-isFocus w = withWindowSet $ \ws ->
-    case peek ws of
-      (Just w') -> pure (w' == w)
-      _         -> pure False
-
-
-raiseWin :: Window -> WindowSet -> WindowSet
-raiseWin w = W.modify' f
-  where
-    err = error "raiseWin: multiple windows matching Window (XID)"
-    f (W.Stack t ls rs)
-      | w == t      = W.Stack t [] (ls ++ rs)
-      | w `elem` ls =  case break (==w) ls of
-                         ([_], rest) -> W.Stack t (w:rest) rs
-                         _           -> err
-      | otherwise   =  case break (==w) rs of
-                         ([_], rest) -> W.Stack t (w:ls) rest
-                         _           -> err
 
 
 smartInsert :: ManageHook
@@ -148,23 +129,20 @@ filterEmpty ss =
   . filter isEmpty
   $ W.workspaces ss
 
-switchFocus :: X () -> X ()
-switchFocus swF = swF >> withFocused f
-  where
-    f w = isFloat w >>= flip when (windows $ raiseWin w)
 
 focusEventHook :: Event -> X All
 focusEventHook = \case
   ClientMessageEvent {ev_message_type, ev_window} -> do
-    p <- (==ev_message_type) <$> getAtom "_NET_ACTIVE_WINDOW" <&&> isFloat ev_window
+    p <- (==ev_message_type) <$> getAtom "_NET_ACTIVE_WINDOW"
+         <&&> withWindowSet (pure . isFloat ev_window)
     let raiseFloat = windows $ raiseWin ev_window
     when p raiseFloat
     pure $ All True
   _ ->
     pure $ All True
 
-isFloat :: Window -> X Bool
-isFloat w = withWindowSet (pure . member w . W.floating)
+isFloat :: Ord a => a -> W.StackSet i l a s sd -> Bool
+isFloat w = member w . W.floating
 
 showDesktopEventHook :: Event -> X All
 showDesktopEventHook = \case
@@ -174,29 +152,6 @@ showDesktopEventHook = \case
     pure $ All True
   _ ->
     pure $ All True
-
-clearlooks :: Theme
-clearlooks = (theme wfarrTheme)
-  { windowTitleIcons    = windowTitleIcons defaultThemeWithImageButtons }
-
-clearlooks' :: Theme
-clearlooks' = (theme wfarrTheme)
-  { activeBorderColor   = "#5E81AC"
-  , activeColor         = "#5E81AC"
-  , inactiveBorderColor = "#1E3440"
-  , inactiveColor       = "#1E3440"
-  , activeBorderWidth   = 20
-  , windowTitleIcons    = windowTitleIcons defaultThemeWithImageButtons
-  }
-
-blueBorder :: Theme
-blueBorder = def
-  { activeBorderColor   = "#5E81AC"
-  , activeColor         = "#5E81AC"
-  , inactiveBorderColor = "#1E3440"
-  , inactiveColor       = "#1E3440"
-  , activeBorderWidth   = 7
-  }
 
 myKeys conf@XConfig { XMonad.modMask = m } =
   M.fromList
@@ -211,9 +166,9 @@ myKeys conf@XConfig { XMonad.modMask = m } =
        , ((m, xK_space)              , sendMessage NextLayout)
        , ((m .|. shiftMask, xK_space), setLayout $ XMonad.layoutHook conf)
        , ((m .|. shiftMask, xK_r)    , refresh)
-       , ((m, xK_j)                  , switchFocus focusDown)
-       , ((m, xK_k)                  , switchFocus focusUp)
-       , ((m, xK_BackSpace)          , switchFocus focusMaster)
+       , ((m, xK_j)                  , focusDown)
+       , ((m, xK_k)                  , focusUp)
+       , ((m, xK_BackSpace)          , focusMaster)
        , ((m, xK_m)                  , withFocused minimizeWindow)
        , ((m .|. shiftMask, xK_m)    , withLastMinimized maximizeWindowAndFocus)
        , ((m, xK_f)                  , withFocused (sendMessage . maximizeRestore))
@@ -253,7 +208,6 @@ dmenuFloat = spawnFloat
 spawnFloat :: String -> X ()
 spawnFloat = spawnAndDo (insertPosition Master Newer <> doCenterFloat)
 
-
 winBringer :: WindowBringerConfig
 winBringer = def { windowTitler = const winClassName}
 
@@ -271,6 +225,7 @@ traverseWindows f = withWindowSet
                   $ traverse_ f
                   . W.allWindows
 
+-- use scratchpads instead
 dwmZero :: WindowSet -> X ()
 dwmZero s = toggle $ filter (== fromJust (peek s)) (W.allWindows s :: [Window])
  where
@@ -280,3 +235,68 @@ dwmZero s = toggle $ filter (== fromJust (peek s)) (W.allWindows s :: [Window])
 isVisible w ws = any ((w ==) .  W.tag . W.workspace) (W.visible ws)
 lazyView w ws | isVisible w ws = ws
               | otherwise      = W.view w ws
+
+
+isFocus :: Window -> X Bool
+isFocus w = withWindowSet $ \ws ->
+    case peek ws of
+      (Just w') -> pure (w' == w)
+      _         -> pure False
+
+raiseWin :: Window -> WindowSet -> WindowSet
+raiseWin w = W.modify' f
+  where
+    err = error "raiseWin: multiple windows matching Window (XID)"
+    f (W.Stack t ls rs)
+      | w == t      = W.Stack t [] (ls ++ rs)
+      | w `elem` ls =  case break (==w) ls of
+                         ([_], rest) -> W.Stack t (w:rest) rs
+                         _           -> err
+      | otherwise   =  case break (==w) rs of
+                         ([_], rest) -> W.Stack t (w:ls) rest
+                         _           -> err
+
+clearlooks :: Theme
+clearlooks = (theme wfarrTheme)
+  { windowTitleIcons    = windowTitleIcons defaultThemeWithImageButtons }
+
+blueBorder :: Theme
+blueBorder = def
+  { activeBorderColor   = "#5E81AC"
+  , activeColor         = "#5E81AC"
+  , inactiveBorderColor = "#1E3440"
+  , inactiveColor       = "#1E3440"
+  , activeBorderWidth   = 7
+  }
+
+headWs :: W.StackSet i l a s sd -> Maybe a
+headWs = with Nothing f
+  where
+    f s = case W.integrate s of
+     []    -> Nothing
+     (w:_) -> Just w
+
+with :: b -> (W.Stack a -> b) -> W.StackSet i l a s sd -> b
+with def f = maybe def f . W.stack . W.workspace . W.current
+
+rotateFloatsR :: WindowSet -> WindowSet
+rotateFloatsR ws = W.modify' checkFocus ws
+  where
+    checkFocus s | isFloat (W.focus s) ws = doRotation s
+                 | otherwise = s
+
+    doRotation s@W.Stack{W.focus=_focus, W.up=left, W.down=right}
+      | none (`isFloat` ws) left = s
+      | otherwise = undefined
+
+none :: Foldable t => (a -> Bool) -> t a -> Bool
+none p = not . any p
+
+shiftP :: (a -> Bool) -> [a] -> ([a], Maybe a)
+shiftP p xs = case break p xs of
+  (_, [])    -> (xs, Nothing)
+  (as, b:bs) -> f as b bs
+  where
+    f ls r rs = case break p rs of
+       (ls', [])     -> (ls ++ ls', Just r)
+       (ls', r':rs') -> f (ls ++ ls' ++ [r]) r' rs'
