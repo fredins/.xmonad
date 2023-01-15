@@ -63,7 +63,7 @@ main = xmonad
      $ conf
 
 conf = desktopConfig
-     { terminal           = "qterminal"
+     { terminal           = "alacritty"
      , modMask            = mod4Mask
      , startupHook        = setWMName "LG3D" <> setDefaultCursor xC_left_ptr
      , keys               = myKeys
@@ -87,7 +87,7 @@ layoutHook' =
   . layoutHintsToCenter
   . ifMax 1 Simplest
   . decor
-  $ tiled ||| Full
+  $ tiled ||| Mirror tiled ||| Full
 
 handleEventHook' :: Event -> X All
 handleEventHook' = composeAll
@@ -96,7 +96,7 @@ handleEventHook' = composeAll
   , showDesktopEventHook
   , dynamicPropertyChange "WM_CLASS" (className =? "Spotify" --> doShift "9")
   , focusEventHook
-  , swallowEventHook (className =? "qterminal") (not <$> isDialog)
+  -- , swallowEventHook (className =? "alacritty") (not <$> isDialog)
   ]
 
 -- Ordering is important
@@ -156,12 +156,13 @@ showDesktopEventHook = \case
 myKeys conf@XConfig { XMonad.modMask = m } =
   M.fromList
     $  [ ((m, xK_n)                  , spawn $ XMonad.terminal conf)
-       , ((m .|. shiftMask, xK_n)    , spawn $ XMonad.terminal conf <> " -w $(xcwd)")
+       , ((m .|. shiftMask, xK_n)    , spawn $ XMonad.terminal conf <> " --working-directory $(xcwd)")
        , ((m, xK_o)                  , mpv)
        , ((m, xK_p)                  , spawn "dmenu_run")
        , ((m .|. shiftMask, xK_p)    , dmenuFloat )
        , ((m, xK_c)                  , spawn "clipmenu")
-       , ((m, xK_u)                  , spawn "firefox-bin")
+       , ((m, xK_u)                  , spawn "firefox")
+       , ((m .|. shiftMask, xK_u)    , spawn "firefox --private-window")
        , ((m .|. shiftMask, xK_c)    , kill)
        , ((m, xK_space)              , sendMessage NextLayout)
        , ((m .|. shiftMask, xK_space), setLayout $ XMonad.layoutHook conf)
