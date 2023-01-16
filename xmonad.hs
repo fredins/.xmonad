@@ -67,7 +67,9 @@ conf = desktopConfig
      , modMask            = mod4Mask
      , startupHook        = setWMName "LG3D" <> setDefaultCursor xC_left_ptr
      , keys               = myKeys
-     , borderWidth        = 0
+     , borderWidth        = 3
+     , focusedBorderColor = "#5E81AC"
+     , normalBorderColor  = "#1E3440"
      , layoutHook         = layoutHook'
      , manageHook         = manageHook'
      , handleEventHook    = handleEventHook'
@@ -77,7 +79,7 @@ conf = desktopConfig
 layoutHook' =
   let
     tiled = ResizableTall 1 (1 / 20) (103 / 200) []
-    decor (x :: l Window) = sideBorderLayout' blueBorder U x
+    -- decor (x :: l Window) = sideBorderLayout' blueBorder U x
     -- decor = imageButtonDeco shrinkText clearlooks
   in
     avoidStruts
@@ -86,7 +88,7 @@ layoutHook' =
   . boringWindows
   . layoutHintsToCenter
   . ifMax 1 Simplest
-  . decor
+  -- . decor
   $ tiled ||| Mirror tiled ||| Full
 
 handleEventHook' :: Event -> X All
@@ -96,7 +98,7 @@ handleEventHook' = composeAll
   , showDesktopEventHook
   , dynamicPropertyChange "WM_CLASS" (className =? "Spotify" --> doShift "9")
   , focusEventHook
-  -- , swallowEventHook (className =? "alacritty") (not <$> isDialog)
+  , swallowEventHook (className =? "alacritty") (not <$> isDialog)
   ]
 
 -- Ordering is important
