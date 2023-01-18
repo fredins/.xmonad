@@ -43,6 +43,7 @@ import           XMonad.Layout.LayoutHints           (hintsEventHook,
                                                       layoutHintsToCenter)
 import           XMonad.Layout.Maximize
 import           XMonad.Layout.Minimize              (minimize)
+import           XMonad.Layout.NoBorders             (smartBorders)
 import           XMonad.Layout.ResizableTile         (MirrorResize (..),
                                                       ResizableTall (..))
 import           XMonad.Layout.SimpleDecoration
@@ -83,6 +84,7 @@ layoutHook' =
     -- decor = imageButtonDeco shrinkText clearlooks
   in
     avoidStruts
+  . smartBorders
   . maximizeWithPadding 0
   . minimize
   . boringWindows
