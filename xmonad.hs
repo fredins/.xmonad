@@ -5,11 +5,13 @@ import           Control.Monad                       (when)
 import           Data.Foldable                       (traverse_)
 import           Data.Map                            (member)
 import qualified Data.Map                            as M
-import           Data.Maybe                          (fromJust, isNothing)
+import           Data.Maybe                          (fromJust, fromMaybe,
+                                                      isNothing)
 import           Data.Monoid                         (All (All))
 import           IfMaxAlt
 import           Prelude
 import           SideBorderDecoration
+import           System.Environment                  (lookupEnv)
 import           XMonad                              hiding (none)
 import           XMonad.Actions.CopyWindow           (copyToAll,
                                                       killAllOtherCopies)
@@ -56,21 +58,26 @@ import           XMonad.Util.Themes
 import           XMonad.Util.WorkspaceCompare        (WorkspaceSort,
                                                       filterOutWs)
 
-main = xmonad
-     . addEwmhWorkspaceSort (filterEmpty <$> gets windowset)
-     . ewmh
-     . ewmhFullscreen
-     . docks
-     $ conf
+main :: IO ()
+main = do
+ terminal <- fromMaybe "alacritty" <$> lookupEnv "TERMINAL"
+ browser  <- fromMaybe "firefox" <$> lookupEnv "BROWSER"
 
-conf = desktopConfig
-     { terminal           = "alacritty"
+ xmonad
+   . addEwmhWorkspaceSort (filterEmpty <$> gets windowset)
+   . ewmh
+   . ewmhFullscreen
+   . docks
+   $ conf terminal browser
+
+conf terminal browser = desktopConfig
+     { terminal           = terminal
      , modMask            = mod4Mask
      , startupHook        = setWMName "LG3D" <> setDefaultCursor xC_left_ptr
-     , keys               = myKeys
-     , borderWidth        = 3
+     , keys               = myKeys browser
+     , borderWidth        = 4
      , focusedBorderColor = "#5E81AC"
-     , normalBorderColor  = "#1E3440"
+     , normalBorderColor  = "#eeeeee"
      , layoutHook         = layoutHook'
      , manageHook         = manageHook'
      , handleEventHook    = handleEventHook'
@@ -157,7 +164,7 @@ showDesktopEventHook = \case
   _ ->
     pure $ All True
 
-myKeys conf@XConfig { XMonad.modMask = m } =
+myKeys browser conf@XConfig { XMonad.modMask = m } =
   M.fromList
     $  [ ((m, xK_n)                  , spawn $ XMonad.terminal conf)
        , ((m .|. shiftMask, xK_n)    , spawn $ XMonad.terminal conf <> " --working-directory $(xcwd)")
@@ -165,8 +172,8 @@ myKeys conf@XConfig { XMonad.modMask = m } =
        , ((m, xK_p)                  , spawn "dmenu_run")
        , ((m .|. shiftMask, xK_p)    , dmenuFloat )
        , ((m, xK_c)                  , spawn "clipmenu")
-       , ((m, xK_u)                  , spawn "firefox")
-       , ((m .|. shiftMask, xK_u)    , spawn "firefox --private-window")
+       , ((m, xK_u)                  , spawn browser)
+       , ((m .|. shiftMask, xK_u)    , spawn $ browser ++ " --private-window")
        , ((m .|. shiftMask, xK_c)    , kill)
        , ((m, xK_space)              , sendMessage NextLayout)
        , ((m .|. shiftMask, xK_space), setLayout $ XMonad.layoutHook conf)
