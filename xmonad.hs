@@ -123,23 +123,14 @@ manageHook' = composeAll
   ]
 
 
-
 smartInsert :: ManageHook
 smartInsert = willFloat >>= \float ->
   insertPosition (if float then Master else End) Newer
 
-
 filterEmpty :: WindowSet -> WorkspaceSort
 filterEmpty ss =
-  let
-    isEmpty w = isNothing (W.stack w)
-             && W.currentTag ss /= W.tag w
-  in
-    filterOutWs
-  . map W.tag
-  . filter isEmpty
-  $ W.workspaces ss
-
+  let isEmpty w = isNothing (W.stack w) && W.currentTag ss /= W.tag w in
+    filterOutWs $ map W.tag $ filter isEmpty $ W.workspaces ss
 
 focusEventHook :: Event -> X All
 focusEventHook = \case
@@ -168,7 +159,7 @@ myKeys browser conf@XConfig { XMonad.modMask = m } =
   M.fromList
     $  [ ((m, xK_n)                  , spawn $ XMonad.terminal conf)
        , ((m .|. shiftMask, xK_n)    , spawn $ XMonad.terminal conf <> " --working-directory $(xcwd)")
-       , ((m, xK_o)                  , mpv)
+       , ((m, xK_aring)              , mpv)
        , ((m, xK_p)                  , spawn "dmenu_run")
        , ((m .|. shiftMask, xK_p)    , dmenuFloat )
        , ((m, xK_c)                  , spawn "clipmenu")

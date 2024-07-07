@@ -7,7 +7,7 @@ extra-source-files: CHANGELOG.md
 executable xmonad
     main-is:          xmonad.hs
     other-modules:    IfMaxAlt, SideBorderDecoration
-    build-depends:    base ^>=4.16.3.0
+    build-depends:    base 
                     , xmonad
                     ,	xmonad-contrib ^>= 0.17.1
                     , containers
